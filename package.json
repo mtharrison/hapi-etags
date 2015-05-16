@@ -1,6 +1,6 @@
 {
   "name": "hapi-etags",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "A plugin for hapi.js that generates etags for your responses",
   "main": "index.js",
   "scripts": {
@@ -20,5 +20,14 @@
   "bugs": {
     "url": "https://github.com/mtharrison/hapi-etags/issues"
   },
-  "homepage": "https://github.com/mtharrison/hapi-etags"
+  "homepage": "https://github.com/mtharrison/hapi-etags",
+  "devDependencies": {
+    "hapi": "^8.4.0",
+    "handlebars": "^3.0.3"
+  },
+  "dependencies": {
+    "boom": "^2.7.1",
+    "hoek": "^2.13.0",
+    "joi": "^6.4.1"
+  }
 }
