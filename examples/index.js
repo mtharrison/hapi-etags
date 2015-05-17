@@ -93,6 +93,39 @@ server.route([
                 expiresIn: 86400 * 1000
             }
         }
+    }, {
+        method: 'GET',
+        path: '/stream',
+        handler: function (request, reply) {
+
+            var stream = new (require('stream').Readable);
+
+            var i = 0;
+
+            stream._read = function () {
+
+                var self = this;
+
+                if (i === 20) {
+                    return this.push(null);
+                }
+
+                setTimeout(function (){
+                    self.push(i.toString());
+                    i++
+                }, 100);
+            };
+
+            var res = reply(stream);
+
+            res.header('content-type', 'text/html');
+        },
+        config: {
+            cache: {
+                privacy: 'private',
+                expiresIn: 86400 * 1000
+            }
+        }
     }
 ]);
 
@@ -101,7 +134,8 @@ server.register([
         register: require('..'),
         options: {
             encoding: 'hex',
-            algo: 'md5'
+            algo: 'md5',
+            varieties: ['plain', 'buffer', 'view', 'stream']
         }
     }
 ], function (err) {
