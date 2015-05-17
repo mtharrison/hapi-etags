@@ -1,6 +1,6 @@
 {
   "name": "hapi-etags",
-  "version": "0.0.2",
+  "version": "0.1.0",
   "description": "A plugin for hapi.js that generates etags for your responses",
   "main": "index.js",
   "scripts": {

@@ -13,7 +13,7 @@ internals.getOptions = function (options) {
     var defaults = {
         encoding: 'base64',
         algo: 'sha1',
-        varieties: ['plain'],
+        varieties: ['plain', 'buffer'],
         etagOptions: {} 
     };
 
