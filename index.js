@@ -53,7 +53,7 @@ internals.marshal = function (request, next) {
             return next(null, source);
         break;
         case 'view':
-            return request.server.render(source.template, source.context, function (err, rendered) {
+            return request.server.render(source.template, source.context, source.options, function (err, rendered) {
 
                 if (err) {
                     throw err;
