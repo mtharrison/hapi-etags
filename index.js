@@ -110,17 +110,12 @@ internals.onPreResponse = function (request, reply) {
     });
 };
 
-
-exports.register = function (server, options, next) {
-
-    server.plugins[Package.name] = server.plugins[Package.name] || {};
-    server.plugins[Package.name].options = internals.getOptions(options);
-    server.ext('onPreResponse', internals.onPreResponse);
-    next();
-};
-
-
-exports.register.attributes = {
-    name: Package.name,
-    version: Package.version
+exports.plugin = {
+    register: (server, options) => {
+        server.plugins[Package.name]         = server.plugins[Package.name] || {};
+        server.plugins[Package.name].options = internals.getOptions(options);
+        server.ext('onPreResponse', internals.onPreResponse);
+    },
+    name    : Package.name,
+    version : Package.version
 };
