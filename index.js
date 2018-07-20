@@ -52,32 +52,27 @@ internals.marshal = async (request) => {
       return source;
       break;
     case 'view':
-      return request.server.render(source.template, source.context, function (err, rendered) {
-
-        if (err) {
-          throw err;
-        }
-
-        return rendered;
-      });
+      return request.server.render(source.template, source.context);
       break;
     case 'stream':
       // We have to read all of the data off the stream to calculate the ETag
+      return new Promise((resolve, reject) => {
+        const pass = new (require('stream').PassThrough);
+        let   data = new Buffer('');
 
-      const pass = new (require('stream').PassThrough);
-      let   data = new Buffer('');
+        source.on('data', function (d) {
+          pass.push(d);
+          data = Buffer.concat([data, d]);
 
-      source.on('data', function (d) {
-        pass.push(d);
-        data = Buffer.concat([data, d]);
+        });
 
+        source.on('end', function () {
+          pass.push(null);
+          request.response.source = pass;
+          return resolve(data);
+        });
       });
 
-      source.on('end', function () {
-        pass.push(null);
-        request.response.source = pass;
-        return data;
-      });
       break;
     default:
       throw Boom.badImplementation('Unknown variety');
