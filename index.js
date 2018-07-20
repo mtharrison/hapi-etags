@@ -93,7 +93,7 @@ internals.onPreResponse = function (request, h) {
     var response = request.response;
 
     if (options.varieties.indexOf(response.variety) === -1) {
-        return h.continue();
+        return h.continue;
     }
 
     internals.marshal(request, function (err, contents) {
@@ -106,7 +106,7 @@ internals.onPreResponse = function (request, h) {
         hash.update(contents);
         response.etag(hash.digest(options.encoding), options.etagOptions);
 
-        return h.continue();
+        return h.continue;
     });
 };
 
