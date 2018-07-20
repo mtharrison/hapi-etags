@@ -87,26 +87,26 @@ internals.marshal = function (request, next) {
 };
 
 
-internals.onPreResponse = function (request, reply) {
+internals.onPreResponse = function (request, h) {
 
     var options = request.server.plugins[Package.name].options;
     var response = request.response;
 
     if (options.varieties.indexOf(response.variety) === -1) {
-        return reply.continue();
+        return h.continue();
     }
 
     internals.marshal(request, function (err, contents) {
 
         if (err) {
-            throw err;
+            return err;
         }
 
         var hash = Crypto.createHash(options.algo);
         hash.update(contents);
         response.etag(hash.digest(options.encoding), options.etagOptions);
 
-        reply.continue();
+        return h.continue();
     });
 };
 
