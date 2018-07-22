@@ -76,8 +76,8 @@ server.route([
     method : 'GET',
     path   : '/buffer',
     handler: function (request, h) {
-
-      return new Buffer('I am a buffer!');
+      const buf = Buffer.from('I am a buffer!');
+      return h.response(buf).bytes(buf.length).code(200);
     },
     config : {
       cache: {
