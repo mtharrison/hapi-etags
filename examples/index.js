@@ -1,151 +1,155 @@
-var Hapi = require('hapi');
+const Hapi = require('hapi');
 
-var server = new Hapi.Server();
-server.connection({ port: 4000 });
+const server = new Hapi.Server({
+  port: 4000
+});
 
-server.views({
-    engines: {
-        hbs: require('handlebars')
+server.register({
+  plugin: require('vision')
+}).then(() => {
+  server.views({
+    engines   : {
+      hbs: require('handlebars')
     },
     relativeTo: __dirname
+  });
 });
 
 server.route([
-    {
-        method: 'GET',
-        path: '/object',
-        handler: function (request, reply) {
+  {
+    method : 'GET',
+    path   : '/object',
+    handler: function (request, h) {
 
-            var users = [
-                {
-                    gender: 'female',
-                    name: {
-                        title: 'ms',
-                        first: 'manuela',
-                        last: 'velasco'
-                    },
-                    location: {
-                        street: '1969 calle de alberto aguilera',
-                        city: 'la coruña',
-                        state: 'asturias',
-                        zip: '56298'
-                    }
-                }
-            ];
-
-            reply(users);
-        },
-        config: {
-            cache: {
-                privacy: 'private',
-                expiresIn: 86400 * 1000
-            }
+      const users = [
+        {
+          gender  : 'female',
+          name    : {
+            title: 'ms',
+            first: 'manuela',
+            last : 'velasco'
+          },
+          location: {
+            street: '1969 calle de alberto aguilera',
+            city  : 'la coruña',
+            state : 'asturias',
+            zip   : '56298'
+          }
         }
-    }, {
-        method: 'GET',
-        path: '/string',
-        handler: function (request, reply) {
+      ];
 
-            reply('This is a string');
-        },
-        config: {
-            cache: {
-                privacy: 'private',
-                expiresIn: 86400 * 1000
-            }
-        }
-    }, {
-        method: 'GET',
-        path: '/number',
-        handler: function (request, reply) {
-
-            reply(42);
-        },
-        config: {
-            cache: {
-                privacy: 'private',
-                expiresIn: 86400 * 1000
-            }
-        }
-    }, {
-        method: 'GET',
-        path: '/buffer',
-        handler: function (request, reply) {
-
-            reply(new Buffer('I am a buffer!'));
-        },
-        config: {
-            cache: {
-                privacy: 'private',
-                expiresIn: 86400 * 1000
-            }
-        }
-    }, {
-        method: 'GET',
-        path: '/view',
-        handler: function (request, reply) {
-
-            reply.view('index', {data: 'somethins'});
-        },
-        config: {
-            cache: {
-                privacy: 'private',
-                expiresIn: 86400 * 1000
-            }
-        }
-    }, {
-        method: 'GET',
-        path: '/stream',
-        handler: function (request, reply) {
-
-            var stream = new (require('stream').Readable);
-
-            var i = 0;
-
-            stream._read = function () {
-
-                var self = this;
-
-                if (i === 20) {
-                    return this.push(null);
-                }
-
-                setTimeout(function (){
-                    self.push(i.toString());
-                    i++
-                }, 100);
-            };
-
-            var res = reply(stream);
-
-            res.header('content-type', 'text/html');
-        },
-        config: {
-            cache: {
-                privacy: 'private',
-                expiresIn: 86400 * 1000
-            }
-        }
+      return users;
+    },
+    config : {
+      cache: {
+        privacy  : 'private',
+        expiresIn: 86400 * 1000
+      }
     }
+  }, {
+    method : 'GET',
+    path   : '/string',
+    handler: function (request, h) {
+
+      return 'This is a string';
+    },
+    config : {
+      cache: {
+        privacy  : 'private',
+        expiresIn: 86400 * 1000
+      }
+    }
+  }, {
+    method : 'GET',
+    path   : '/number',
+    handler: function (request, h) {
+
+      return 42;
+    },
+    config : {
+      cache: {
+        privacy  : 'private',
+        expiresIn: 86400 * 1000
+      }
+    }
+  }, {
+    method : 'GET',
+    path   : '/buffer',
+    handler: function (request, h) {
+      const buf = Buffer.from('I am a buffer!');
+      return h.response(buf).bytes(buf.length).code(200);
+    },
+    config : {
+      cache: {
+        privacy  : 'private',
+        expiresIn: 86400 * 1000
+      }
+    }
+  }, {
+    method : 'GET',
+    path   : '/view',
+    handler: function (request, h) {
+
+      return h.view('index', { data: 'something' });
+    },
+    config : {
+      cache: {
+        privacy  : 'private',
+        expiresIn: 86400 * 1000
+      }
+    }
+  }, {
+    method : 'GET',
+    path   : '/stream',
+    handler: function (request, h) {
+
+      const stream = new (require('stream').Readable);
+
+      let i = 0;
+
+      stream._read = function () {
+
+        const self = this;
+
+        if (i === 20) {
+          return this.push(null);
+        }
+
+        setTimeout(function () {
+          self.push(i.toString());
+          i++
+        }, 100);
+      };
+
+      return h
+        .response(stream)
+        .header('content-type', 'text/html');
+    },
+    config : {
+      cache: {
+        privacy  : 'private',
+        expiresIn: 86400 * 1000
+      }
+    }
+  }
 ]);
 
-server.register([
-    {
-        register: require('..'),
-        options: {
-            encoding: 'hex',
-            algo: 'md5',
-            varieties: ['plain', 'buffer', 'view', 'stream']
-        }
-    }
-], function (err) {
-
-    if (err) {
-        throw err;
-    }
-
-    server.start(function () {
+try {
+  server
+    .register({
+      plugin : require('..'),
+      options: {
+        encoding : 'hex',
+        algo     : 'md5',
+        varieties: ['plain', 'buffer', 'view', 'stream']
+      }
+    })
+    .then(() => {
+      server.start().then(() => {
         console.log('Started!');
+      });
     });
+} catch (err) {
+  throw err;
+}
 
-});

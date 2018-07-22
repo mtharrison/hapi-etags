@@ -1,126 +1,112 @@
-var Package = require('./package');
-var Crypto = require('crypto');
-var Hoek = require('hoek');
-var Boom = require('boom');
-var Joi = require('joi');
+const Package = require('./package');
+const Crypto = require('crypto');
+const Hoek = require('hoek');
+const Boom = require('boom');
+const Joi = require('joi');
 
 
-var internals = {};
+const internals = {};
 
 
 internals.getOptions = function (options) {
 
-    var defaults = {
-        encoding: 'base64',
-        algo: 'sha1',
-        varieties: ['plain', 'buffer'],
-        etagOptions: {} 
-    };
+  const defaults = {
+    encoding: 'base64',
+    algo: 'sha1',
+    varieties: ['plain', 'buffer'],
+    etagOptions: {}
+  };
 
-    options = Hoek.applyToDefaults(defaults, options);
+  options = Hoek.applyToDefaults(defaults, options);
 
-    var schema = {
-        encoding: Joi.string().required().valid(['hex', 'base64']),
-        algo: Joi.string().required().valid(Crypto.getHashes()),
-        varieties: Joi.array().required().items(Joi.string().valid(['plain', 'buffer', 'view', 'stream'])),
-        etagOptions: Joi.object().required()
-    };
+  const schema = {
+    encoding: Joi.string().required().valid(['hex', 'base64']),
+    algo: Joi.string().required().valid(Crypto.getHashes()),
+    varieties: Joi.array().required().items(Joi.string().valid(['plain', 'buffer', 'view', 'stream'])),
+    etagOptions: Joi.object().required()
+  };
 
-    Joi.assert(options, schema);
+  Joi.assert(options, schema);
 
-    return options;
+  return options;
 };
 
 
-internals.marshal = function (request, next) {
+internals.marshal = async (request) => {
 
-    var options = request.server.plugins[Package.name].options;
-    var response = request.response;
-    var source = response.source;
+  const response = request.response;
+  const source = response.source;
 
-    switch (response.variety) {
-        case 'plain':
-            if (typeof source === 'object') {
-                return next(null, JSON.stringify(source));
-            }
-            // Should we allow numbers?
-            if (typeof source !== 'string') {
-                return next(Boom.badImplementation('Plain variety responses must be objects or strings'));
-            }
-            return next(null, source);
-        break;
-        case 'buffer':
-            return next(null, source);
-        break;
-        case 'view':
-            return request.server.render(source.template, source.context, function (err, rendered) {
+  switch (response.variety) {
+    case 'plain':
+      if (typeof source === 'object') {
+        return JSON.stringify(source);
+      }
+      // Should we allow numbers?
+      if (typeof source !== 'string') {
+        throw Boom.badImplementation('Plain variety responses must be objects or strings');
+      }
+      return source;
+      break;
+    case 'buffer':
+      return source;
+      break;
+    case 'view':
+      return request.server.render(source.template, source.context);
+      break;
+    case 'stream':
+      // We have to read all of the data off the stream to calculate the ETag
+      return new Promise((resolve, reject) => {
+        const pass = new (require('stream').PassThrough);
+        let   data = new Buffer('');
 
-                if (err) {
-                    throw err;
-                }
+        source.on('data', function (d) {
+          pass.push(d);
+          data = Buffer.concat([data, d]);
 
-                return next(null, rendered);
-            });
-        break;
-        case 'stream':
-            // We have to read all of the data off the stream to calculate the ETag
+        });
 
-            var pass = new (require('stream').PassThrough);
-            var data = new Buffer('');
+        source.on('end', function () {
+          pass.push(null);
+          request.response.source = pass;
+          return resolve(data);
+        });
+      });
 
-            source.on('data', function (d) {
-                pass.push(d);
-                data = Buffer.concat([data, d]);
-                
-            });
-
-            source.on('end', function () {
-                pass.push(null);
-                request.response.source = pass;
-                next(null, data);
-            });
-        break;
-        default:
-            next(Boom.badImplementation('Unknown variety'));
-        break;
-    }
+      break;
+    default:
+      throw Boom.badImplementation('Unknown variety');
+      break;
+  }
 };
 
 
-internals.onPreResponse = function (request, reply) {
+internals.onPreResponse = async (request, h) => {
 
-    var options = request.server.plugins[Package.name].options;
-    var response = request.response;
+  const options = request.server.plugins[Package.name].options;
+  const response = request.response;
 
-    if (options.varieties.indexOf(response.variety) === -1) {
-        return reply.continue();
-    }
+  if (options.varieties.indexOf(response.variety) === -1) {
+    return h.continue;
+  }
 
-    internals.marshal(request, function (err, contents) {
-
-        if (err) {
-            throw err;
-        }
-
-        var hash = Crypto.createHash(options.algo);
-        hash.update(contents);
-        response.etag(hash.digest(options.encoding), options.etagOptions);
-
-        reply.continue();
-    });
+  try {
+    const contents = await internals.marshal(request);
+    const hash = Crypto.createHash(options.algo);
+    hash.update(contents);
+    response.etag(hash.digest(options.encoding), options.etagOptions);
+    return h.continue;
+  }  catch (err) {
+    return err;
+  }
 };
 
-
-exports.register = function (server, options, next) {
-
-    server.plugins[Package.name] = server.plugins[Package.name] || {};
+exports.plugin = {
+  register: (server, options) => {
+    server.plugins[Package.name]         = server.plugins[Package.name] || {};
     server.plugins[Package.name].options = internals.getOptions(options);
     server.ext('onPreResponse', internals.onPreResponse);
-    next();
-};
-
-
-exports.register.attributes = {
-    name: Package.name,
-    version: Package.version
+  },
+  name    : Package.name,
+  version : Package.version
 };
